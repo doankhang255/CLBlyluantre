@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Thiệp mở (gập 3D, không rời trang)</title>
+<style>
+:root{
+  --brand:#e94e77;      /* màu điểm nhấn: hồng đậm */
+  --ink:#2f2a2a;        /* màu chữ */
+  --muted:#6b5555;      /* màu phụ, hơi nâu hồng */
+  --paper:#ffffff;      /* 💗 màu nền thiệp hồng phấn */
+  --cover:#fff0f6;      /* 💞 màu bìa nhạt hơn */
+  --edge:#f8c7d4;       /* viền hồng nhạt */
+  --bg:#fff7fa;         /* nền tổng thể hồng sáng */
+}
+
+  *{box-sizing:border-box}
+  body{
+    margin:0; min-height:100dvh; display:grid; place-items:center;
+    background:var(--bg); color:var(--ink);
+    font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial;
+    padding:24px;
+  }
+
+  /* Sân khấu 3D */
+  .stage{ perspective:1600px; }
+  .card{
+    position:relative;
+    width:min(520px, 96vw);
+    height:520px;
+    background:var(--paper);
+    border-radius:18px;
+    box-shadow:0 28px 70px rgba(0,0,0,.18);
+    border:1px solid var(--edge);
+    overflow:hidden;
+  }
+
+  /* Hai trang bên trong (trái + phải) */
+  .inner{
+    position:absolute; inset:0;
+    display:grid; grid-template-columns:1fr 1fr;
+  }
+  .page{
+    padding:28px 26px;
+  }
+  .left{
+    background:
+      radial-gradient(900px 260px at -10% 0%, rgba(233,78,119,.08), transparent 60%),
+      var(--paper);
+  }
+  .right{
+    background:
+      radial-gradient(900px 260px at 110% 0%, rgba(233,78,119,.08), transparent 60%),
+      var(--paper);
+  }
+  .corner-image {
+  position: absolute;
+  bottom: 5px;      /* cách đáy thiệp 20px */
+  left: 60px;        /* cách viền trái thiệp 20px */
+  z-index: 5;        /* hiển thị phía trên nền */
+}
+.corner-image img {
+  width: 150px;      /* cô chỉnh nhỏ/to tuỳ ý, ví dụ 100–160px */
+  border-radius: 12px;  /* bo nhẹ cho đẹp */
+  opacity: 0.95;        /* hơi mờ nhẹ nếu muốn mềm mại */
+  transition: transform 0.3s ease;
+}
+.corner-image img:hover {
+  transform: scale(1.05); /* phóng nhẹ khi rê chuột */
+}
+  /* Trang trí nhẹ */
+  .ribbon{
+    display:inline-block; padding:6px 12px; border-radius:999px;
+    background:rgba(233,78,119,.12); color:var(--brand); font-weight:800; letter-spacing:.3px; font-size:12px;
+  }
+  h1{font-size:36px; line-height:1.15; margin:12px 0 8px}
+  .lead{color:var(--muted); font-size:18px; margin:0 0 12px}
+  .section-title{ text-transform:uppercase; font-size:12px; letter-spacing:.5px; color:var(--muted); margin:14px 0 6px }
+  .big{
+    font-size:22px; font-weight:800; line-height:1.35;
+  }
+  .note{ color:var(--muted); margin-top:6px }
+
+  /* Bìa (che nửa phải, gập từ cạnh giữa) */
+  .cover{
+    position:absolute; top:0; bottom:0; right:0;
+    width:50%;
+    transform-origin:left center;
+    transform-style:preserve-3d;
+    transition: transform .9s cubic-bezier(.2,.7,.2,1);
+    background:var(--cover);
+    border-left:1px solid var(--edge);
+    box-shadow:inset 0 0 0 1px var(--edge);
+  }
+  /* Mặt ngoài bìa */
+  .cover-outer, .cover-inner{
+    position:absolute; inset:0; backface-visibility:hidden;
+    display:flex; flex-direction:column; justify-content:center; align-items:center; text-align:center; padding:32px;
+  }
+  .cover-outer{
+    background:
+      radial-gradient(1200px 300px at 50% -10%, rgba(233,78,119,.12), transparent 60%),
+      var(--cover);
+  }
+  .cover-outer h2{ margin:8px 0 4px; font-size:30px }
+  .cover-outer .sub{ color:var(--muted) }
+  .heart{
+    width:60px; height:60px; position:relative; transform:rotate(-45deg); margin-bottom:8px;
+  }
+  .heart:before, .heart:after{
+    content:""; position:absolute; background:var(--brand); width:60px; height:60px; border-radius:50%;
+  }
+  .heart:before{ left:30px }
+  .heart:after { top:-30px }
+
+  /* Mặt trong của bìa (hiện khi mở) */
+  .cover-inner{
+    transform:rotateY(180deg);
+    background:
+      linear-gradient(180deg, #fff, #fff7fa);
+  }
+
+  /* Trạng thái mở */
+  .card.open .cover{ transform:rotateY(-180deg); }
+
+  /* Nút gợi ý */
+  .hint{
+    margin-top:14px; text-align:center; color:var(--muted); font-size:14px; user-select:none;
+  }
+
+  /* Mobile */
+  @media (max-width:740px){
+    .card{ height:560px }
+    h1{font-size:30px}
+    .big{font-size:20px}
+  }
+
+  /* In: luôn in ở trạng thái mở */
+  @media print{
+    body{ background:#fff }
+    .hint{ display:none }
+    .card{ box-shadow:none; border:1px solid #ddd }
+    .cover{ transform:rotateY(-180deg) !important }
+  }
+/* Ẩn ảnh góc trái khi thiệp mở */
+.card.open .corner-image {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.6s ease;
+}
+
+</style>
+</head>
+<body>
+
+<div class="stage">
+  <div class="card" id="card" role="button" tabindex="0" aria-pressed="false" aria-label="Thiệp – bấm để mở/đóng">
+    <!-- Bên trong thiệp -->
+    <div class="inner">
+      <div class="page left">
+        <span class="ribbon">THIỆP CHÚC MỪNG</span>
+        <h3>CHÚC MỪNG 20-10</h3>
+        <p class="lead">Cảm ơn các bạn đã là 1 phần của CLB Lý luận trẻ ❤️ </p>
+
+        <div class="section-title">Thời gian</div>
+        <div><h3>Thứ hai, 20/10/2025</h3></div>
+
+        <div class="section-title">Địa điểm</div>
+        <div ><h3>Trường Đại học Kiểm sát</h3></div>
+            <!-- ảnh trang trí góc trái -->
+        <div class="corner-image">
+            <img src="./anh1.jpg" alt="Ảnh trang trí">
+        </div>
+
+      </div>
+
+      <div class="page right">
+        <div class="sub"><h2>Lời CLB gửi đến các bạn nữ ♥️❤️💛💚💙💜💖💝💗💓❣️</h2>
+        <div><h4>Nhân ngày 20/10, Câu lạc bộ xin gửi đến các bạn nữ những lời chúc chân thành nhất.
+Cảm ơn các bạn – những bông hoa xinh đẹp, dịu dàng nhưng mạnh mẽ, luôn góp phần làm cho tập thể của chúng ta thêm ấm áp và rực rỡ.
+Chúc các bạn luôn giữ nụ cười rạng rỡ, trái tim đầy yêu thương và hành trình phía trước luôn tràn ngập niềm vui, thành công và hạnh phúc 🌸🌸</h4></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bìa che nửa phải (mặt ngoài + mặt trong) -->
+    <div class="cover" id="cover">
+      <div class="cover-outer" aria-hidden="false">
+        <div class="heart"></div>
+        <h3>Chúc mừng em 🪷🌷</h3>
+        <p class="sub">bấm vào thiệp để mở </p>
+      </div>
+      <div class="cover-inner" aria-hidden="true">
+        <p class="sub"><h2>♥ Cảm ơn em đã mở thiệp ♥</h2></p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const card = document.getElementById('card');
+
+  function toggleOpen(){
+    card.classList.toggle('open');
+    card.setAttribute('aria-pressed', card.classList.contains('open') ? 'true' : 'false');
+  }
+
+  // Bấm để mở/đóng
+  card.addEventListener('click', (e)=>{
+    // tránh khi chọn chữ (contenteditable) mà vẫn lật
+    const isEditing = e.target && e.target.isContentEditable;
+    if(!isEditing) toggleOpen();
+  });
+
+  // Phím Enter / Space
+  card.addEventListener('keydown', (e)=>{
+    if(e.key === 'Enter' || e.key === ' '){
+      e.preventDefault();
+      toggleOpen();
+    }
+  });
+</script>
+
+</body>
+</html>
